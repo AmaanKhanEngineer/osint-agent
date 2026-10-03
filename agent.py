@@ -1,21 +1,15 @@
 # ── 1. IMPORTS & SETUP ──────────────────────────────────────
 import os
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
 import asyncio
 import requests
 from dotenv import load_dotenv
 from typing import Annotated
 from typing_extensions import TypedDict
 
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_core.tools import tool
-from langchain_anthropic import ChatAnthropic
-from ddgs import DDGS
-from crawl4ai import AsyncWebCrawler
+load_dotenv()
+
+# Optional offline flags for huggingface
+# os.environ.setdefault("HF_HUB_OFFLINE", "0")
 
 from prompts import OSINT_SYSTEM_PROMPT
 from memory import save_investigation, search_memory, list_all_subjects
@@ -23,7 +17,20 @@ from translator import translate_target, translate_content_to_english
 from searxng_client import searxng_search_formatted, searxng_search
 from geo_tools import get_location_intelligence
 
-load_dotenv()
+# Safe search import
+try:
+    from ddgs import DDGS
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError:
+        DDGS = None
+
+# Safe crawler import
+try:
+    from crawl4ai import AsyncWebCrawler
+except ImportError:
+    AsyncWebCrawler = None
 
 
 # ── 2. NON-WESTERN TARGET DETECTION ─────────────────────────
@@ -33,10 +40,10 @@ def detect_needs_multilingual(query: str) -> tuple[bool, list]:
 
     east_asian = ['xi jinping', 'china', 'chinese', 'taiwan', 'taiwanese',
                   'japan', 'japanese', 'korea', 'korean', 'kim jong',
-                  'beijing', 'shanghai', 'hong kong', 'tokyo', 'seoul']
+                  'beijing', 'shanghai', 'hong kong', 'tokyo', 'seoul', 'tsmc']
     middle_east = ['bin salman', 'mbs', 'saudi', 'iran', 'iranian',
-                   'Lebanon', 'arab', 'netanyahu', 'arabic', 'dubai',
-                   'uae', 'egypt', 'syria', 'iraq', 'erdogan', 'turkey', 'turkish']
+                   'lebanon', 'arab', 'netanyahu', 'arabic', 'dubai',
+                   'uae', 'egypt', 'syria', 'iraq', 'erdogan', 'turkey', 'turkish', 'riyadh']
     europe = ['putin', 'russia', 'russian', 'ukraine', 'ukrainian',
               'zelensky', 'kremlin', 'moscow', 'kyiv', 'medvedev']
     south_asia = ['modi', 'india', 'indian', 'pakistani', 'pakistan']
@@ -50,9 +57,13 @@ def detect_needs_multilingual(query: str) -> tuple[bool, list]:
 
 
 # ── 3. SEARCH TOOLS ─────────────────────────────────────────
+from langchain_core.tools import tool
+
 @tool
 def web_search(query: str) -> str:
     """Search the general web for any topic. Use this for people, companies, places, events, background info."""
+    if DDGS is None:
+        return f"DuckDuckGo search module is not installed."
     try:
         with DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=5))
@@ -76,31 +87,46 @@ def deep_web_search(query: str) -> str:
 def search_news(query: str) -> str:
     """Search for recent news articles about a given topic."""
     api_key = os.getenv("NEWSAPI_KEY")
+    if not api_key or api_key == "your_newsapi_key_here":
+        return "NewsAPI key is not configured. Falling back to general web search."
+
     url = f"https://newsapi.org/v2/everything?q={query}&sortBy=publishedAt&pageSize=5&apiKey={api_key}"
-    response = requests.get(url)
-    data = response.json()
+    try:
+        response = requests.get(url, timeout=10)
+        data = response.json()
 
-    if data.get("status") != "ok":
-        return f"Error searching news: {data.get('message', 'unknown error')}"
+        if data.get("status") != "ok":
+            return f"Error searching news: {data.get('message', 'unknown error')}"
 
-    articles = data.get("articles", [])
-    if not articles:
-        return f"No articles found for {query}."
+        articles = data.get("articles", [])
+        if not articles:
+            return f"No articles found for {query}."
 
-    result = f"Found {len(articles)} recent articles about {query}:\n\n"
-    for i, article in enumerate(articles, 1):
-        title = article.get("title", "No title")
-        source = article.get("source", {}).get("name", "Unknown")
-        description = article.get("description", "No description")
-        published = article.get("publishedAt", "")[:10]
-        result += f"{i}. [{source}, {published}] {title}\n   {description}\n\n"
-    return result
+        result = f"Found {len(articles)} recent articles about {query}:\n\n"
+        for i, article in enumerate(articles, 1):
+            title = article.get("title", "No title")
+            source = article.get("source", {}).get("name", "Unknown")
+            description = article.get("description", "No description")
+            published = article.get("publishedAt", "")[:10]
+            result += f"{i}. [{source}, {published}] {title}\n   {description}\n\n"
+        return result
+    except Exception as e:
+        return f"NewsAPI connection error: {str(e)}"
 
 
 # ── 4. SCRAPING TOOLS ───────────────────────────────────────
 @tool
 def scrape_page(url: str) -> str:
     """Scrape and read the full content of any webpage. Use after search to read articles in detail."""
+    if AsyncWebCrawler is None:
+        # Fallback to requests if crawl4ai not installed
+        try:
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            text = resp.text[:4000]
+            return f"Content from {url}:\n\n{text}"
+        except Exception as e:
+            return f"Error scraping page: {str(e)}"
+
     try:
         async def _scrape():
             async with AsyncWebCrawler() as crawler:
@@ -138,10 +164,7 @@ LANG_CODES = {
 
 @tool
 def multilingual_search(target: str, regions: str = "all") -> str:
-    """Search for a target across multiple languages using SearXNG with regional engines. Use for non-Western targets.
-
-    regions: "all", "middle_east", "east_asia", "europe", "south_asia"
-    """
+    """Search for a target across multiple languages using SearXNG with regional engines. Use for non-Western targets."""
     region_list = [r.strip() for r in regions.split(",")]
     translations = translate_target(target, region_list)
     if "error" in translations:
@@ -197,11 +220,7 @@ def list_memory() -> str:
 # ── 7. GEOSPATIAL TOOLS ─────────────────────────────────────
 @tool
 def location_intelligence(location: str) -> str:
-    """Get satellite imagery and geographic intelligence for any location (workplace, institution, city, address).
-
-    Examples: "University of Texas at Dallas", "SpaceX Boca Chica Texas", "Al-Nassr FC stadium Riyadh"
-    Returns formatted address, coordinates, classification, and satellite image URLs at three zoom levels.
-    """
+    """Get satellite imagery and geographic intelligence for any location (workplace, institution, city, address)."""
     return get_location_intelligence(location)
 
 
@@ -220,33 +239,65 @@ tools = [
 ]
 
 
-# ── 9. LLM & GRAPH ──────────────────────────────────────────
-llm = ChatAnthropic(model="claude-haiku-4-5", temperature=0.2)
-llm_with_tools = llm.bind_tools(tools)
+# ── 9. DYNAMIC LLM BUILDER ──────────────────────────────────
+def get_configured_llm():
+    """Dynamically build the LLM based on environment variables."""
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
+    if anthropic_key and anthropic_key != "your_anthropic_key_here":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(model="claude-3-5-haiku-20241022", temperature=0.2)
+
+    if groq_key and groq_key != "your_groq_key_here":
+        from langchain_groq import ChatGroq
+        return ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.2)
+
+    if openai_key and openai_key != "your_openai_key_here":
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+
+    # Check Ollama
+    ollama_model = os.getenv("OLLAMA_MODEL")
+    if ollama_model:
+        from langchain_ollama import ChatOllama
+        return ChatOllama(model=ollama_model, temperature=0.2)
+
+    raise ValueError(
+        "No LLM API key configured! Please provide ANTHROPIC_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY in your .env or sidebar."
+    )
 
 
+# ── 10. GRAPH BUILDER ───────────────────────────────────────
 class State(TypedDict):
-    messages: Annotated[list, add_messages]
+    messages: Annotated[list, lambda x, y: x + y]
 
 
-def agent_node(state: State):
-    messages = [{"role": "system", "content": OSINT_SYSTEM_PROMPT}] + list(state["messages"])
-    try:
-        return {"messages": [llm_with_tools.invoke(messages)]}
-    except Exception as e:
-        return {"messages": [{"role": "assistant", "content": f"Error in agent reasoning: {str(e)}. Please rephrase your query."}]}
+def build_graph(llm_instance=None):
+    from langgraph.graph import StateGraph, START, END
+    from langgraph.prebuilt import ToolNode, tools_condition
+
+    llm = llm_instance or get_configured_llm()
+    llm_with_tools = llm.bind_tools(tools)
+
+    def agent_node(state: State):
+        messages = [{"role": "system", "content": OSINT_SYSTEM_PROMPT}] + list(state["messages"])
+        try:
+            return {"messages": [llm_with_tools.invoke(messages)]}
+        except Exception as e:
+            return {"messages": [{"role": "assistant", "content": f"Error in agent reasoning: {str(e)}."}]}
+
+    graph_builder = StateGraph(State)
+    graph_builder.add_node("agent", agent_node)
+    graph_builder.add_node("tools", ToolNode(tools))
+    graph_builder.add_edge(START, "agent")
+    graph_builder.add_conditional_edges("agent", tools_condition)
+    graph_builder.add_edge("tools", "agent")
+    return graph_builder.compile()
 
 
-graph_builder = StateGraph(State)
-graph_builder.add_node("agent", agent_node)
-graph_builder.add_node("tools", ToolNode(tools))
-graph_builder.add_edge(START, "agent")
-graph_builder.add_conditional_edges("agent", tools_condition)
-graph_builder.add_edge("tools", "agent")
-graph = graph_builder.compile()
-
-
-# ── 10. INVESTIGATION PIPELINE ──────────────────────────────
+# ── 11. INVESTIGATION PIPELINE ──────────────────────────────
 MEMORY_SHORTCUTS = [
     "what's in memory", "whats in memory", "what is in memory",
     "what have we investigated", "list memory", "show memory",
@@ -300,8 +351,9 @@ def _extract_subject(final_response: str) -> str:
     return "Unknown"
 
 
-def investigate(query: str) -> dict:
-    """Run one investigation. Returns final response, tool calls, and saved subject (if any). Used by the UI."""
+def investigate(query: str, custom_llm=None) -> dict:
+    """Run one investigation. Returns final response, tool calls, and saved subject (if any)."""
+    graph = build_graph(custom_llm)
     initial_messages = _build_initial_messages(query)
     result = graph.invoke({"messages": initial_messages}, config={"recursion_limit": 50})
     final_response = result['messages'][-1].content
@@ -321,19 +373,23 @@ def investigate(query: str) -> dict:
 
 
 def run():
+    print("🎯 OSINT Intelligence Agent Initializing...")
     while True:
-        user_input = input("Message: ")
-        if user_input == "exit":
+        user_input = input("\nMessage: ")
+        if user_input.strip() in ["exit", "quit", "q"]:
             break
 
         if any(phrase in user_input.lower().strip() for phrase in MEMORY_SHORTCUTS):
             print(list_all_subjects())
             continue
 
-        result = investigate(user_input)
-        print(f"Assistant: {result['response']}")
-        if result['saved_subject']:
-            print(f"\n[✓ Investigation saved to memory: {result['saved_subject']}]")
+        try:
+            result = investigate(user_input)
+            print(f"\nAssistant:\n{result['response']}")
+            if result['saved_subject']:
+                print(f"\n[✓ Investigation saved to memory: {result['saved_subject']}]")
+        except Exception as e:
+            print(f"\n[!] Error during investigation: {str(e)}")
 
 
 if __name__ == "__main__":
