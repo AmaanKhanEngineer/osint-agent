@@ -1,222 +1,144 @@
-# 🎯 OSINT Intelligence Agent
+# 🎯 OSINT Intelligence Agent v2.0
+> **Autonomous Open-Source Intelligence & Multimodal Reconnaissance System**  
+> *Developed by [Amaan Khan](https://github.com/AmaanKhanEngineer) (Based on blaikr/osint-agent)*
 
-An autonomous AI agent for open-source intelligence investigations. Takes a target (a person, company, organization, or event) and produces structured intelligence reports pulling from global news, multilingual regional sources, satellite imagery, and persistent memory.
-
-![triple satellite view](./screenshots/3view.png)
-
----
-
-## ✨ What It Does
-
-Give it a target, and it autonomously:
-
-- Searches the open web across Google, Bing, Baidu, Yandex, and more
-- Scrapes and reads full articles, not just snippets
-- Searches in **16 languages** with native-script queries (Chinese, Arabic, Russian, Japanese, Korean, etc.)
-- Translates foreign-language content back to English
-- Pulls **satellite imagery** at three zoom levels for any associated workplace, campus, or city
-- Remembers every investigation across sessions and builds on prior findings
-- Correlates facts across sources and flags contradictions
-- Produces a structured intelligence report with confidence assessment
+An enterprise-grade autonomous AI system for deep open-source intelligence investigations. Give it any target (a corporation, executive, facility, academic institution, or geopolitical entity), and it autonomously performs cross-lingual investigations across 16 languages, extracts live news, captures multi-tier satellite reconnaissance imagery, and synthesizes structured intelligence dossiers with persistent vector memory.
 
 ---
 
-## 🛰️ Example Output
+## 🌟 Major Highlights & New Features in v2.0
 
-![example](./screenshots/example.png)
+### 1. 🎨 Dynamic Multi-Theme Engine
+Switch between **6 custom visual themes** instantly from the sidebar:
+- 🛡️ **Tactical OSINT (Navy/Ice)** — Military Command & Defense look *(Default)*
+- 🟢 **Matrix Cyberpunk** — Classic hacker green terminal monospace aesthetic
+- ⚡ **Neon Synthwave** — Cyberpunk cyan (`#00f0ff`) & magenta (`#ff007f`)
+- 🔥 **Crimson Alert** — High-priority tactical alert red
+- 💎 **Modern Obsidian** — Minimalist glassmorphism dark mode with soft indigo accents
+- ☀️ **Daylight Dossier** — Clean executive daylight briefing theme
 
-Ask it to "Investigate Anthropic's San Francisco headquarters" and it returns a full report.
+### 2. 🛰️ Interactive Satellite & Geolocation Reconnaissance
+- **Interactive Pin Map (`st.map`):** Live pinpoint coordinate visualization with zoom and pan.
+- **Zero-API-Key Fallback:** Uses **OpenStreetMap (Nominatim)** to resolve exact latitude/longitude even without a paid Google Maps API key.
+- **3-Tier Satellite Views:** Macro neighborhood context, facility perimeter, and micro building close-up.
+- **One-Click Direct Portals:** Jump straight to Google Maps Satellite View or OpenStreetMap.
+
+### 3. 🧠 Multi-Provider LLM Brain
+No longer locked to a single provider. Seamlessly switch between:
+- **Anthropic Claude:** `claude-3-5-haiku-20241022`, `claude-3-5-sonnet`
+- **Groq Cloud (Fast & Free Tier):** `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`
+- **OpenAI:** `gpt-4o-mini`, `gpt-4o`
+- **Ollama:** Local models like `qwen2.5`, `llama3.1`
+
+### 4. 🧪 Zero-Cost Demo Simulation Mode
+Test the complete dashboard, all 6 themes, satellite maps, tool execution logs, and archive storage without requiring any paid API keys or Docker setup!
+
+### 5. 📑 4-Tab Structured Intelligence Dossier
+- **Tab 1: 📋 Intelligence Dossier** — Executive summary, operational profile, international coverage, and sources.
+- **Tab 2: 🛰️ Satellite & Geolocation** — Pin map, coordinates, and satellite captures.
+- **Tab 3: 🔧 Agent Tool Execution Log** — Chronological execution chain of all tools invoked by the agent.
+- **Tab 4: 💾 Export & Raw Data** — One-click **"Download Dossier (.md)"** and JSON trace export.
+
+### 6. 📂 Persistent ChromaDB & Fallback Memory
+- Stores every past investigation and recalls previous research automatically.
+- Includes a real-time keyword search filter, individual dossier deletion, and bulk memory clear.
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│           Streamlit UI  (app.py)                    │
-└─────────────────────┬───────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│   LangGraph Agent  (agent.py)                       │
-│   - Claude Haiku brain with 10 tools                │
-│   - Auto-triggers multilingual for non-Western      │
-└───┬──────┬──────┬──────┬──────┬──────┬─────────────┘
-    │      │      │      │      │      │
-    ▼      ▼      ▼      ▼      ▼      ▼
-┌──────┐┌──────┐┌──────┐┌──────┐┌──────┐┌────────────┐
-│News  ││DDGS  ││SearX ││Crawl ││Geo   ││ ChromaDB   │
-│API   ││      ││NG    ││4AI   ││Maps  ││ Memory     │
-└──────┘└──────┘└──────┘└──────┘└──────┘└────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      Streamlit UI Dashboard (app.py)                    │
+│    Theme Engine | Quick Presets | Interactive Map | 4-Tab Dossier       │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ User Target Query
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       LangGraph Agent (agent.py)                        │
+│    - Autonomous Reasoning Loop (Claude / Groq / OpenAI / Ollama)        │
+│    - 16-Language Multilingual Trigger for Regional Engines              │
+└────────┬───────────┬───────────┬───────────┬───────────┬───────────┬────┘
+         │           │           │           │           │           │
+         ▼           ▼           ▼           ▼           ▼           ▼
+     ┌───────┐   ┌───────┐   ┌───────┐   ┌───────┐   ┌───────┐   ┌─────────┐
+     │ Duck  │   │NewsAPI│   │SearXNG│   │Crawl  │   │OpenSt.│   │ChromaDB │
+     │DuckGo │   │       │   │       │   │4AI    │   │& Maps │   │Memory   │
+     └───────┘   └───────┘   └───────┘   └───────┘   └───────┘   └─────────┘
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## 🚀 Quick Start Guide
 
-- **Agent framework:** LangGraph
-- **LLM:** Claude Haiku (Anthropic API)
-- **Web search:** DuckDuckGo + self-hosted SearXNG aggregator
-- **Regional engines:** Baidu, Yandex, Bing, Google (via SearXNG)
-- **Scraping:** Crawl4AI (Playwright under the hood)
-- **Translation:** Claude Haiku, 16 languages
-- **Vector memory:** ChromaDB with local sentence-transformers embeddings
-- **Geospatial:** Google Maps Static API + Geocoding API
-- **UI:** Streamlit
+### 1. Clone the Repository
+```bash
+git clone https://github.com/AmaanKhanEngineer/osint-agent.git
+cd osint-agent
+```
+
+### 2. Run the One-Click Launcher
+```bash
+./start.sh
+```
+*(This automatically activates the virtual environment and starts the Streamlit dashboard).*
+
+Access the dashboard in your browser:
+👉 **`http://localhost:8501`**
 
 ---
 
-## 🚀 Setup
-
-### Prerequisites
-
-- Python 3.11
-- Conda (or any venv manager)
-- Docker Desktop (for self-hosted SearXNG)
-- API keys: Anthropic, NewsAPI, Google Maps
-
-### 1. Clone and install
+### Manual Setup (Optional)
 
 ```bash
-git clone https://github.com/blaikr/osint-agent.git
-cd osint-agent
+# 1. Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-conda create -n osint-agent python=3.11
-conda activate osint-agent
-
+# 2. Install dependencies
 pip install -r requirements.txt
 crawl4ai-setup
-```
 
-### 2. Add your API keys
-
-```bash
+# 3. Configure API keys in .env
 cp .env.example .env
-```
 
-Open `.env` and paste your keys:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-NEWSAPI_KEY=...
-GOOGLE_MAPS_API_KEY=...
-```
-
-### 3. Start SearXNG
-
-```bash
-cd searxng
-docker compose up -d
-```
-
-Verify it's running by visiting [http://localhost:8080](http://localhost:8080).
-
-### 4. Run the agent
-
-Terminal mode:
-
-```bash
-python agent.py
-```
-
-Dashboard mode:
-
-```bash
+# 4. Start the dashboard
 streamlit run app.py
 ```
 
 ---
 
-## 💡 Example Queries
+## 🔑 Environment Configuration (`.env`)
 
-```
-Research Anthropic
-Investigate UT Dallas computer science department
-Find information on Xi Jinping's recent policy moves
-Research Mohammed bin Salman
-What do we know about Dario Amodei
-```
+Add any of the following keys to your `.env` file (or enter them directly in the Streamlit sidebar):
 
-Non-Western targets automatically trigger multilingual search across regional engines (Baidu for Chinese, Yandex for Russian, etc.).
+```env
+# --- LLM Brain (Choose at least ONE) ---
+ANTHROPIC_API_KEY=sk-ant-...        # Claude API
+GROQ_API_KEY=gsk_...               # Groq Cloud (Free at console.groq.com)
+OPENAI_API_KEY=sk-...              # OpenAI API
 
----
+# --- Geospatial & Satellite Reconnaissance ---
+GOOGLE_MAPS_API_KEY=AIzaSy...      # Optional (Has automatic OpenStreetMap fallback)
 
-## 🧠 Memory
+# --- Recent News Feed ---
+NEWSAPI_KEY=...                    # Optional (Free at newsapi.org)
 
-Every investigation is saved automatically and persists across sessions. Recall with:
-
-```
-what's in memory
-what have we investigated
-```
-
-Or ask questions like *"what do we know about Anthropic"* - the agent pulls the stored report verbatim without re-investigating.
-
----
-
-## 📁 Project Structure
-
-```
-osint-agent/
-├── agent.py              # LangGraph orchestration + tools
-├── app.py                # Streamlit dashboard
-├── memory.py             # ChromaDB persistent memory
-├── translator.py         # Multilingual translation (Claude)
-├── searxng_client.py     # Local SearXNG aggregator client
-├── geo_tools.py          # Google Maps geocoding + satellite
-├── prompts.py            # System prompt for the analyst persona
-├── check_memory.py       # Inspect ChromaDB directly
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── searxng/
-    ├── docker-compose.yml
-    └── settings.yml
+# --- SearXNG Aggregator (Optional Docker) ---
+SEARXNG_URL=http://localhost:8080/search
 ```
 
 ---
 
-## 🎚️ Design Notes
+## 💡 Example Queries & Presets
 
-- **Hallucination safeguards:** Strict system prompt rules that only URLs actually returned by tools can be cited. Fabrication reduced dramatically through iterative prompt design.
-- **Programmatic triggering:** Multilingual search fires automatically for non-Western targets rather than relying on the LLM to decide.
-- **Memory recall integrity:** Stored reports are quoted verbatim rather than paraphrased, preventing fact corruption over time.
-- **Scope boundaries:** Satellite imagery is restricted to professional/public locations; the agent will not pull imagery of private residences.
-
----
-
-## ⚠️ Scope & Limitations
-
-This tool searches **public, open-source information only**. It cannot and does not:
-
-- Access content behind logins (private social media, paywalled articles)
-- Hack, scrape restricted databases, or bypass platform protections
-- Access commercial data broker tools (Palantir, LexisNexis, Pipl)
-- Guarantee accuracy - every investigation should be human-verified before acting on it
-
-Intended for research, journalism, personal due diligence, and educational use.
-
----
-
-## 🛣️ Roadmap
-
-- [ ] Autonomous monitoring mode (background loops on saved targets)
-- [ ] Fine-tuned local Qwen model for cost-free 24/7 operation
-- [ ] Knowledge graph linking entities across investigations
-- [ ] PDF ingestion for court filings and archived documents
-- [ ] Wayback Machine integration for historical coverage
-
----
-
-## 👤 Author
-
-Built by [Rami Blaik](https://github.com/blaikr) - CS undergrad at UT Dallas.
-
-Other projects:
-- [personalized-llm](https://github.com/blaikr/personalized-llm) - Custom LLM fine-tuning with SFT, IFT, and DPO
+- `Investigate Anthropic San Francisco headquarters`
+- `Research University of Texas at Dallas computer science department`
+- `Investigate SpaceX Starbase Boca Chica launch facility`
+- `Investigate TSMC Hsinchu Science Park Taiwan`
+- `Research recent policy moves by Xi Jinping`
 
 ---
 
 ## 📜 License
-
-Apache 2.0
+Apache 2.0 License.
